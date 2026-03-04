@@ -62,7 +62,10 @@ def eval_to_bar(score) -> float:
     if score is None:
         return 0.0
     if score.is_mate():
-        return 1.0 if score.mate() > 0 else -1.0
+        # score.mate() > 0  → white has a forced mate (white winning)
+        # score.mate() == 0 → checkmate just delivered, winner is white (Mate(0) from white's POV)
+        # score.mate() < 0  → black has a forced mate (black winning)
+        return 1.0 if score.mate() >= 0 else -1.0
     cp = score.score(mate_score=100000)
     cp = max(-1000, min(1000, cp))
     return cp / 1000.0
