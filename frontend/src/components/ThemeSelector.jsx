@@ -1,24 +1,42 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { BOARD_THEMES } from '../utils/themes';
 
 export default function ThemeSelector({ currentTheme, onSelect }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
+    const buttonRef = useRef(null);
 
-    // Safety check
     const theme = BOARD_THEMES[currentTheme] || BOARD_THEMES['green'];
     if (!theme) return null;
 
-    const toggle = () => setIsOpen(!isOpen);
+    const toggle = () => {
+        if (!isOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setDropdownPos({
+                top: rect.bottom + 8,
+                right: window.innerWidth - rect.right,
+            });
+        }
+        setIsOpen(prev => !prev);
+    };
+
+    // Close on outside click
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleClick = () => setIsOpen(false);
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+    }, [isOpen]);
 
     return (
-        <div className="relative z-50">
+        <div className="relative">
             <button
-                onClick={toggle}
+                ref={buttonRef}
+                onClick={(e) => { e.stopPropagation(); toggle(); }}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded border border-blue-500 transition-colors shadow-lg"
                 title="Change Board Theme"
             >
                 <div className="flex gap-0.5">
-                    {/* Tiny preview icon */}
                     <div className="w-3 h-3 border border-white/20" style={{ backgroundColor: theme.light }}></div>
                     <div className="w-3 h-3 border border-white/20" style={{ backgroundColor: theme.dark }}></div>
                 </div>
@@ -27,7 +45,11 @@ export default function ThemeSelector({ currentTheme, onSelect }) {
             </button>
 
             {isOpen && (
-                <div className="absolute top-full right-0 mt-2 w-48 bg-[#262421] border border-[#3c3a37] rounded-lg shadow-xl z-50 overflow-hidden">
+                <div
+                    className="fixed w-48 bg-[#262421] border border-[#3c3a37] rounded-lg shadow-xl z-[9999] overflow-hidden"
+                    style={{ top: dropdownPos.top, right: dropdownPos.right }}
+                    onClick={(e) => e.stopPropagation()}
+                >
                     <div className="py-1">
                         {Object.entries(BOARD_THEMES).map(([key, themeOption]) => (
                             <button
@@ -49,11 +71,6 @@ export default function ThemeSelector({ currentTheme, onSelect }) {
                         ))}
                     </div>
                 </div>
-            )}
-
-            {/* Click outside closer overlay */}
-            {isOpen && (
-                <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
             )}
         </div>
     );
