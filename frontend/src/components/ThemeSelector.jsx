@@ -51,9 +51,9 @@ export default function ThemeSelector({ currentTheme, onSelect }) {
                 </div>
             )}
 
-            {/* Click outside closer overlay */}
+            {/* Click outside closer overlay - behind dropdown (z-40 < z-50) */}
             {isOpen && (
-                <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+                <div className="fixed inset-0 z-40" onMouseDown={() => setIsOpen(false)} />
             )}
         </div>
     );
