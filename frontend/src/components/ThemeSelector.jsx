@@ -29,7 +29,7 @@ export default function ThemeSelector({ currentTheme, onSelect }) {
             {isOpen && (
                 <div className="absolute top-full right-0 mt-2 w-48 bg-[#262421] border border-[#3c3a37] rounded-lg shadow-xl z-50 overflow-hidden">
                     <div className="py-1">
-                        {Object.entries(BOARD_THEMES).map(([key, theme]) => (
+                        {Object.entries(BOARD_THEMES).map(([key, themeOption]) => (
                             <button
                                 key={key}
                                 onClick={() => {
@@ -39,11 +39,11 @@ export default function ThemeSelector({ currentTheme, onSelect }) {
                                 className={`w-full text-left px-4 py-2 flex items-center gap-3 hover:bg-[#302e2b] transition-colors ${currentTheme === key ? 'bg-[#302e2b]' : ''}`}
                             >
                                 <div className="flex border border-gray-600">
-                                    <div className="w-4 h-4" style={{ backgroundColor: theme.light }} />
-                                    <div className="w-4 h-4" style={{ backgroundColor: theme.dark }} />
+                                    <div className="w-4 h-4" style={{ backgroundColor: themeOption.light }} />
+                                    <div className="w-4 h-4" style={{ backgroundColor: themeOption.dark }} />
                                 </div>
                                 <span className={`text-sm ${currentTheme === key ? 'text-white font-bold' : 'text-gray-300'}`}>
-                                    {theme.name}
+                                    {themeOption.name}
                                 </span>
                             </button>
                         ))}
@@ -51,9 +51,9 @@ export default function ThemeSelector({ currentTheme, onSelect }) {
                 </div>
             )}
 
-            {/* Click outside closer overlay - behind dropdown (z-40 < z-50) */}
+            {/* Click outside closer overlay */}
             {isOpen && (
-                <div className="fixed inset-0 z-40" onMouseDown={() => setIsOpen(false)} />
+                <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
             )}
         </div>
     );
