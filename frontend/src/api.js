@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8000";
+const API_URL = "https://chessreview-production.up.railway.app";
 
 export async function reviewGame(pgn, depth = 18) {
   try {
