@@ -5,18 +5,19 @@ import chess.engine
 import chess.polyglot
 import matplotlib.pyplot as plt
 
-from backend.opening_books.eco_loader import load_eco_openings, detect_opening
+import json
 
 ENGINE_PATH = "backend/engine/stockfish"
-BOOK_PATH = "backend/opening_books/books/bin/gm2001.bin"
-ECO_PATH = "backend/opening_books/eco/openings.pgn"
-MIN_OPENING_PLIES = 6
+OPENINGS_JSON_PATH = "backend/opening_books/openings.json"
 
+# ------------------ Load Openings JSON ------------------
 
-
-# ------------------ Load ECO openings ------------------
-
-eco_openings = load_eco_openings(ECO_PATH)
+try:
+    with open(OPENINGS_JSON_PATH, "r", encoding="utf-8") as f:
+        _OPENINGS_DB = json.load(f)
+except Exception as e:
+    print(f"ERROR: Failed to load openings from {OPENINGS_JSON_PATH}: {e}")
+    _OPENINGS_DB = {}
 
 
 # ------------------ Helper functions ------------------
@@ -168,12 +169,7 @@ with open("backend/games/sample.pgn") as pgn:
 board = game.board()
 engine = chess.engine.SimpleEngine.popen_uci(ENGINE_PATH)
 
-# Opening book
-book = None
-if os.path.exists(BOOK_PATH):
-    book = chess.polyglot.open_reader(BOOK_PATH)
-else:
-    print("No opening book found at", BOOK_PATH)
+# Opening json already loaded
 
 print("Move | Side | Played | Best | CP Loss | Label")
 print("-" * 72)
@@ -202,104 +198,68 @@ for move in game.mainline_moves():
     # -------- Determine SAN of played move --------
     san_played = board.san(move)
 
-    # -------- Opening detection (ALL moves) --------
+    # -------- Opening detection --------
     played_moves_san.append(san_played)
 
-    # Detect opening ONLY after enough plies
-    if ply_count  >= MIN_OPENING_PLIES:
-        eco, name = detect_opening(played_moves_san, eco_openings)
-        if name:
-            current_opening = f"{eco} — {name}"
+    current_fen_key = board.board_fen()
+    if current_fen_key in _OPENINGS_DB:
+        current_opening = _OPENINGS_DB[current_fen_key]
 
-            if not opening_printed:
-                print(f"\nOpening detected: {current_opening}\n")
-                opening_printed = True
+        if not opening_printed:
+            print(f"\nOpening detected: {current_opening}\n")
+            opening_printed = True
 
+    # -------- Engine analysis --------
+    info_before = engine.analyse(board, chess.engine.Limit(depth=14))
+    score_before = info_before["score"].white()
 
-    # -------- Book move check --------
-    is_book_move = False
-    book_moves = []
+    best_move = engine.play(board, chess.engine.Limit(depth=14)).move
+    try:
+        san_best = board.san(best_move)
+    except Exception:
+        san_best = "-"
 
-    if book is not None:
-        try:
-            entries = list(book.find_all(board))
-            book_moves = [e.move for e in entries]
-            if move in book_moves:
-                is_book_move = True
-        except Exception:
-            is_book_move = False
+    board.push(move)
 
-    if is_book_move:
-        # THEORY move
-        label = "Theory"
-        cp_loss = 0
+    material_after = material_count(board)
 
-        best_move = book_moves[0] if book_moves else None
-        try:
-            san_best = board.san(best_move) if best_move else "-"
-        except Exception:
-            san_best = "-"
+    info_after = engine.analyse(board, chess.engine.Limit(depth=14))
+    score_after = info_after["score"].white()
 
-        score_before = None
-        score_after = None
-        material_after = material_before
+    # For eval bar
+    eval_bar = eval_to_bar(score_after)
+    eval_graph.append(eval_bar)
 
-        board.push(move)
+    cp_loss = (
+        score_before.score(mate_score=100000)
+        - score_after.score(mate_score=100000)
+    )
 
-    else:
-        # -------- Engine analysis --------
-        info_before = engine.analyse(board, chess.engine.Limit(depth=14))
-        score_before = info_before["score"].white()
+    if board.turn == chess.BLACK:
+        cp_loss = -cp_loss
 
-        best_move = engine.play(board, chess.engine.Limit(depth=14)).move
-        try:
-            san_best = board.san(best_move)
-        except Exception:
-            san_best = "-"
+    cp_loss = abs(cp_loss)
 
-        board.push(move)
-
-        material_after = material_count(board)
-
-        info_after = engine.analyse(board, chess.engine.Limit(depth=14))
-        score_after = info_after["score"].white()
-
-        # For eval bar
-        eval_bar = eval_to_bar(score_after)
-        eval_graph.append(eval_bar)
-
-
-        cp_loss = (
-            score_before.score(mate_score=100000)
-            - score_after.score(mate_score=100000)
-        )
-
-        if board.turn == chess.BLACK:
-            cp_loss = -cp_loss
-
-        cp_loss = abs(cp_loss)
-
-        label = classify_move(
-            move,
-            best_move,
-            score_before,
-            score_after,
-            cp_loss,
-            material_before,
-            material_after
-        )
-
-        # For accuracy
-        if label != "Theory":
-            move_accuracy = cp_loss_to_accuracy(cp_loss)
-
-            if side == 'W':
-                white_accuracies.append(move_accuracy)
-            else:
-                 black_accuracies.append(move_accuracy)
-    
+    label = classify_move(
+        move,
+        best_move,
+        score_before,
+        score_after,
+        cp_loss,
+        material_before,
+        material_after
+    )
 
     side = "W" if board.turn == chess.BLACK else "B"
+
+    # For accuracy
+    if label != "Theory":
+        move_accuracy = cp_loss_to_accuracy(cp_loss)
+
+        if side == 'W':
+            white_accuracies.append(move_accuracy)
+        else:
+             black_accuracies.append(move_accuracy)
 
     print(
     f"{move_no:>4} | {side} | {san_played:<6} | {san_best:<6} | "
@@ -324,6 +284,4 @@ plot_eval_graph(eval_graph)
 
 
 # Cleanup
-if book is not None:
-    book.close()
 engine.quit()

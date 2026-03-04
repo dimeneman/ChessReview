@@ -11,13 +11,8 @@ import chess.polyglot
 import matplotlib.pyplot as plt
 import json
 
-# from opening_books.eco_loader import load_eco_openings
-
 # ----------------- Config -----------------
 ENGINE_PATH = os.environ.get("STOCKFISH_PATH", os.path.join(os.path.dirname(__file__), "engine/stockfish"))
-BOOK_PATH = os.environ.get("BOOK_PATH", os.path.join(os.path.dirname(__file__), "opening_books/books/bin/gm2001.bin"))
-# Use absolute path relative to this file to find the ECO pgn
-ECO_PATH = os.environ.get("ECO_PATH", os.path.join(os.path.dirname(__file__), "opening_books/eco/openings.pgn"))
 OPENINGS_JSON_PATH = os.environ.get("OPENINGS_JSON_PATH", os.path.join(os.path.dirname(__file__), "opening_books/openings.json"))
 
 MIN_OPENING_PLIES = 6         # set to 0 to detect from first ply
@@ -28,12 +23,6 @@ BRILLIANT_CP_GAP = 300        # cp gap between best and 2nd best for "Brilliant"
 CP_LOSS_CAP = 1000            # cap to avoid mate explosions
 
 
-# ----------------- Load ECO (once) -----------------
-# try:
-#     _raw_eco_openings = load_eco_openings(ECO_PATH)
-# except Exception:
-#     _raw_eco_openings = None
-
 # ----------------- Load Openings JSON (once) -----------------
 try:
     with open(OPENINGS_JSON_PATH, "r", encoding="utf-8") as f:
@@ -41,121 +30,6 @@ try:
 except Exception as e:
     print(f"ERROR: Failed to load openings from {OPENINGS_JSON_PATH}: {e}")
     _OPENINGS_DB = {}
-
-
-# ----------------- Helpers: normalize moves & parse ECOs -----------------
-# def normalize_san(s: Optional[str]) -> str:
-#     if s is None:
-#         return ""
-#     s = s.strip()
-#     s = s.replace("0-0-0", "O-O-O").replace("0-0", "O-O")
-#     for ch in ["+", "#", "?", "!", "$"]:
-#         s = s.replace(ch, "")
-#     s = s.replace("x", "")
-#     if "=" in s:
-#         s = s.split("=", 1)[0]
-#     return s.strip()
-# 
-# 
-# def _parse_eco_openings(raw) -> List[Dict[str, Any]]:
-#     """
-#     Normalize various possible shapes returned by load_eco_openings into a list of dicts:
-#     {'eco': str, 'name': str, 'moves': [normalized SAN...]}
-#     """
-#     out: List[Dict[str, Any]] = []
-#     if not raw:
-#         return out
-# 
-#     if isinstance(raw, dict):
-#         for eco_code, val in raw.items():
-#             name = None
-#             moves = []
-#             if isinstance(val, (list, tuple)) and len(val) >= 2:
-#                 name = val[0]
-#                 moves = val[1]
-#             elif isinstance(val, dict):
-#                 name = val.get("name") or val.get("opening") or val.get("eco_name")
-#                 moves = val.get("moves") or val.get("move_list") or val.get("pgn")
-#             elif isinstance(val, str):
-#                 moves = val
-# 
-#             if isinstance(moves, str):
-#                 tokens = []
-#                 for tok in moves.strip().split():
-#                     if tok.endswith("."):
-#                         continue
-#                     tokens.append(tok)
-#                 moves = tokens
-#             elif isinstance(moves, (list, tuple)):
-#                 moves = list(moves)
-#             else:
-#                 moves = []
-# 
-#             moves_norm = [normalize_san(m) for m in moves if m]
-#             out.append({"eco": str(eco_code), "name": name or "", "moves": moves_norm})
-#         return out
-# 
-#     if isinstance(raw, (list, tuple)):
-#         for item in raw:
-#             if not item:
-#                 continue
-#             eco_code = item.get("eco") if isinstance(item, dict) else None
-#             name = None
-#             moves = []
-#             if isinstance(item, dict):
-#                 name = item.get("name") or item.get("opening") or item.get("eco_name")
-#                 moves = item.get("moves") or item.get("move_list") or item.get("pgn") or []
-# 
-#             if isinstance(moves, str):
-#                 tokens = []
-#                 for tok in moves.strip().split():
-#                     if tok.endswith("."):
-#                         continue
-#                     tokens.append(tok)
-#                 moves = tokens
-#             elif isinstance(moves, (list, tuple)):
-#                 moves = list(moves)
-#             else:
-#                 moves = []
-# 
-#             moves_norm = [normalize_san(m) for m in moves if m]
-#             out.append({"eco": str(eco_code or ""), "name": name or "", "moves": moves_norm})
-#         return out
-# 
-#     return out
-# 
-# 
-# _PARSED_ECO_OPENINGS = _parse_eco_openings(_raw_eco_openings)
-# 
-# 
-# def simple_detect_opening_with_length(played: List[str]) -> Tuple[Optional[str], Optional[str], int]:
-#     """
-#     Prefix-match the normalized played SAN list against parsed ECO openings.
-#     Returns (eco, name, matched_prefix_length). matched_prefix_length is number of plies matched.
-#     If none matches, returns (None, None, 0).
-#     """
-#     if not _PARSED_ECO_OPENINGS:
-#         return None, None, 0
-# 
-#     played_norm = [normalize_san(p) for p in played if p]
-#     best_match = None
-#     best_len = 0
-# 
-#     for o in _PARSED_ECO_OPENINGS:
-#         moves = o.get("moves", [])
-#         if not moves:
-#             continue
-#         # must be prefix of opening moves
-#         if len(played_norm) <= len(moves) and played_norm == moves[: len(played_norm)]:
-#             # prefer longest matched prefix (the more plies matched, the better)
-#             match_len = len(played_norm)
-#             if match_len > best_len:
-#                 best_len = match_len
-#                 best_match = o
-# 
-#     if best_match:
-#         return best_match.get("eco"), best_match.get("name"), best_len
-#     return None, None, 0
 
 
 # ----------------- Analysis helpers -----------------
@@ -305,8 +179,6 @@ def get_coach_comment(label, played_san, best_san, cp_loss, side):
         return "An excellent move. You're maintaining a strong position."
     if label == "Good":
         return "A good solid move."
-    if label == "Theory":
-        return f"{played_san} is a book move."
     if label == "Inaccuracy":
         return f"This is an inaccuracy. {best_san} was better."
     if label == "Mistake":
@@ -326,7 +198,6 @@ def get_coach_comment(label, played_san, best_san, cp_loss, side):
 def review_game(
     pgn_text: str,
     engine_path: str = ENGINE_PATH,
-    book_path: str = BOOK_PATH,
     depth: int = DEFAULT_DEPTH,
     return_eval_graph_image: bool = False,
     multipv: int = DEFAULT_MULTIPV,
@@ -348,14 +219,6 @@ def review_game(
         engine = chess.engine.SimpleEngine.popen_uci(engine_path)
     except Exception as e:
         return {"error": f"Could not start engine at '{engine_path}': {e}"}
-
-    # opening book optional
-    book = None
-    if book_path and os.path.exists(book_path):
-        try:
-            book = chess.polyglot.open_reader(book_path)
-        except Exception:
-            book = None
 
     results: Dict[str, Any] = {"moves": [], "opening": None, "white_accuracy": None, "black_accuracy": None, "eval_graph": []}
 
@@ -397,18 +260,6 @@ def review_game(
             #             opening_printed = True
             # ----------------------------------------------------------------
 
-            # Book check
-            is_book_move = False
-            book_moves = []
-            if book is not None:
-                try:
-                    entries = list(book.find_all(board))
-                    book_moves = [e.move for e in entries]
-                    if move in book_moves:
-                        is_book_move = True
-                except Exception:
-                    is_book_move = False
-
             cp_loss = 0
             san_best = "-"
             label = "Unknown"
@@ -416,123 +267,113 @@ def review_game(
             best_score = None
             second_score = None
 
-            if is_book_move:
-                label = "Theory"
-                cp_loss = 0
-                best_move = book_moves[0] if book_moves else None
-                try:
-                    san_best = board.san(best_move) if best_move else "-"
-                except Exception:
-                    san_best = "-"
-                board.push(move)
-                # keep eval graph continuous for book moves
-                eval_graph.append(eval_graph[-1] if eval_graph else 0.0)
-            else:
-                # multipv analysis
-                try:
-                    infos = engine.analyse(board, chess.engine.Limit(depth=depth), multipv=multipv)
-                except Exception:
-                    infos = None
+            # multipv analysis
+            try:
+                infos = engine.analyse(board, chess.engine.Limit(depth=depth), multipv=multipv)
+            except Exception:
+                infos = None
 
-                if isinstance(infos, list) and len(infos) > 0:
-                    top_info = infos[0]
-                    pv = top_info.get("pv")
-                    if pv and len(pv) > 0:
-                        best_move = pv[0]
-                    else:
-                        try:
-                            best_move = engine.play(board, chess.engine.Limit(depth=depth)).move
-                        except Exception:
-                            best_move = None
-                    try:
-                        best_score = top_info.get("score").white() if top_info.get("score") is not None else None
-                    except Exception:
-                        best_score = None
-                    try:
-                        if len(infos) > 1 and infos[1].get("score") is not None:
-                            second_score = infos[1].get("score").white()
-                    except Exception:
-                        second_score = None
+            if isinstance(infos, list) and len(infos) > 0:
+                top_info = infos[0]
+                pv = top_info.get("pv")
+                if pv and len(pv) > 0:
+                    best_move = pv[0]
                 else:
                     try:
                         best_move = engine.play(board, chess.engine.Limit(depth=depth)).move
                     except Exception:
                         best_move = None
-
                 try:
-                    san_best = board.san(best_move) if best_move else "-"
+                    best_score = top_info.get("score").white() if top_info.get("score") is not None else None
                 except Exception:
-                    san_best = "-"
+                    best_score = None
+                try:
+                    if len(infos) > 1 and infos[1].get("score") is not None:
+                        second_score = infos[1].get("score").white()
+                except Exception:
+                    second_score = None
+            else:
+                try:
+                    best_move = engine.play(board, chess.engine.Limit(depth=depth)).move
+                except Exception:
+                    best_move = None
 
-                # analyze before
-                info_before = engine.analyse(board, chess.engine.Limit(depth=depth))
-                score_before = info_before.get("score")
-                if score_before is not None:
-                    score_before = score_before.white()
+            try:
+                san_best = board.san(best_move) if best_move else "-"
+            except Exception:
+                san_best = "-"
 
-                # push move
-                board.push(move)
-                
-                material_after = material_count(board)
+            # analyze before
+            info_before = engine.analyse(board, chess.engine.Limit(depth=depth))
+            score_before = info_before.get("score")
+            if score_before is not None:
+                score_before = score_before.white()
 
-                # analyze after
-                info_after = engine.analyse(board, chess.engine.Limit(depth=depth))
-                score_after = info_after.get("score")
-                if score_after is not None:
-                    score_after = score_after.white()
+            # push move
+            board.push(move)
+            
+            material_after = material_count(board)
 
-                # eval graph
-                eval_bar = eval_to_bar(score_after)
-                eval_graph.append(eval_bar)
+            # analyze after
+            info_after = engine.analyse(board, chess.engine.Limit(depth=depth))
+            score_after = info_after.get("score")
+            if score_after is not None:
+                score_after = score_after.white()
 
-                # cp loss
+            # eval graph
+            eval_bar = eval_to_bar(score_after)
+            eval_graph.append(eval_bar)
+
+            # cp loss
+            cp_before = None
+            cp_after = None
+            try:
+                cp_before = score_before.score(mate_score=100000) if score_before is not None else None
+            except Exception:
                 cp_before = None
+            try:
+                cp_after = score_after.score(mate_score=100000) if score_after is not None else None
+            except Exception:
                 cp_after = None
-                try:
-                    cp_before = score_before.score(mate_score=100000) if score_before is not None else None
-                except Exception:
-                    cp_before = None
-                try:
-                    cp_after = score_after.score(mate_score=100000) if score_after is not None else None
-                except Exception:
-                    cp_after = None
 
-                if cp_before is not None and cp_after is not None:
-                    cp_loss_val = cp_before - cp_after
-                    if side == "B":
-                        cp_loss_val = -cp_loss_val
-                    cp_loss = abs(int(cp_loss_val))
-                else:
-                    cp_loss = 0
+            if cp_before is not None and cp_after is not None:
+                cp_loss_val = cp_before - cp_after
+                if side == "B":
+                    cp_loss_val = -cp_loss_val
+                cp_loss = abs(int(cp_loss_val))
+            else:
+                cp_loss = 0
 
-                # Cap cp_loss to avoid mate explosions
-                cp_loss = min(cp_loss, CP_LOSS_CAP)
+            # Cap cp_loss to avoid mate explosions
+            cp_loss = min(cp_loss, CP_LOSS_CAP)
 
-                label = classify_move(
-                    move,
-                    best_move,
-                    score_before,
-                    score_after,
-                    cp_loss,
-                    material_before,
-                    material_after,
-                    best_score=best_score,
-                    second_score=second_score,
-                    brilliant_cp_gap=BRILLIANT_CP_GAP,
-                )
-
-                # accuracy
-                if label != "Theory":
-                    move_accuracy = cp_loss_to_accuracy(cp_loss)
-                    if side == "W":
-                        white_accuracies.append(move_accuracy)
-                    else:
-                        black_accuracies.append(move_accuracy)
+            label = classify_move(
+                move,
+                best_move,
+                score_before,
+                score_after,
+                cp_loss,
+                material_before,
+                material_after,
+                best_score=best_score,
+                second_score=second_score,
+                brilliant_cp_gap=BRILLIANT_CP_GAP,
+            )
 
             # Detect opening via FEN (openings.json) - Runs for both Book and Engine moves
             current_fen_key = board.board_fen()
             if current_fen_key in _OPENINGS_DB:
                 current_opening = _OPENINGS_DB[current_fen_key]
+                label = "Theory"
+                cp_loss = 0
+
+            # accuracy
+            if label != "Theory":
+                move_accuracy = cp_loss_to_accuracy(cp_loss)
+                if side == "W":
+                    white_accuracies.append(move_accuracy)
+                else:
+                    black_accuracies.append(move_accuracy)
 
             # record move
             entry = {
@@ -541,7 +382,7 @@ def review_game(
                 "side": side,
                 "played_san": san_played_raw,
                 "best_san": san_best,
-                "is_book_move": bool(is_book_move),
+                "is_book_move": False,
                 "cp_loss": cp_loss,
                 "label": label,
                 "coach_comment": get_coach_comment(label, san_played_raw, san_best, cp_loss, side),
@@ -581,11 +422,6 @@ def review_game(
                 results["eval_graph_image_base64"] = None
 
     except Exception as e:
-        if book is not None:
-            try:
-                book.close()
-            except Exception:
-                pass
         try:
             engine.quit()
         except Exception:
@@ -593,11 +429,6 @@ def review_game(
         return {"error": f"Error analyzing game: {e}"}
 
     # cleanup
-    if book is not None:
-        try:
-            book.close()
-        except Exception:
-            pass
     try:
         engine.quit()
     except Exception:
@@ -609,7 +440,6 @@ def review_game(
 def review_game_stream(
     pgn_text: str,
     engine_path: str = ENGINE_PATH,
-    book_path: str = BOOK_PATH,
     depth: int = DEFAULT_DEPTH,
     multipv: int = DEFAULT_MULTIPV,
 ):
@@ -642,14 +472,6 @@ def review_game_stream(
         yield json.dumps({"error": f"Could not start engine: {e}"}) + "\n"
         return
 
-    # opening book
-    book = None
-    if book_path and os.path.exists(book_path):
-        try:
-            book = chess.polyglot.open_reader(book_path)
-        except Exception:
-            book = None
-
     # Count total plies for progress
     temp_board = game.board()
     total_ply = 0
@@ -679,6 +501,7 @@ def review_game_stream(
     move_no = 1
     ply_count = 0
     played_moves_san: List[str] = []
+    current_opening: Optional[str] = None
     
     white_accuracies: List[float] = []
     black_accuracies: List[float] = []
@@ -699,18 +522,6 @@ def review_game_stream(
                 "percent": round(((ply_count) / total_ply) * 100, 1)
             }) + "\n"
 
-            # Book check
-            is_book_move = False
-            book_moves = []
-            if book is not None:
-                try:
-                    entries = list(book.find_all(board))
-                    book_moves = [e.move for e in entries]
-                    if move in book_moves:
-                        is_book_move = True
-                except Exception:
-                    is_book_move = False
-
             cp_loss = 0
             san_best = "-"
             label = "Unknown"
@@ -718,120 +529,115 @@ def review_game_stream(
             best_score = None
             second_score = None
 
-            if is_book_move:
-                label = "Theory"
-                cp_loss = 0
-                best_move = book_moves[0] if book_moves else None
-                try:
-                    san_best = board.san(best_move) if best_move else "-"
-                except Exception:
-                    san_best = "-"
-                board.push(move)
-                eval_graph.append(eval_graph[-1] if eval_graph else 0.0)
-            else:
-                # Engine Analysis
-                try:
-                    infos = engine.analyse(board, chess.engine.Limit(depth=depth), multipv=multipv)
-                except Exception:
-                    infos = None
+            # Engine Analysis
+            try:
+                infos = engine.analyse(board, chess.engine.Limit(depth=depth), multipv=multipv)
+            except Exception:
+                infos = None
 
-                # ... (Same logic as review_game for best_move/score)
-                if isinstance(infos, list) and len(infos) > 0:
-                    top_info = infos[0]
-                    pv = top_info.get("pv")
-                    if pv and len(pv) > 0:
-                        best_move = pv[0]
-                    else:
-                        try:
-                            best_move = engine.play(board, chess.engine.Limit(depth=depth)).move
-                        except Exception:
-                            best_move = None
-                    try:
-                        best_score = top_info.get("score").white() if top_info.get("score") is not None else None
-                    except Exception:
-                        best_score = None
-                    try:
-                        if len(infos) > 1 and infos[1].get("score") is not None:
-                            second_score = infos[1].get("score").white()
-                    except Exception:
-                        second_score = None
+            if isinstance(infos, list) and len(infos) > 0:
+                top_info = infos[0]
+                pv = top_info.get("pv")
+                if pv and len(pv) > 0:
+                    best_move = pv[0]
                 else:
                     try:
                         best_move = engine.play(board, chess.engine.Limit(depth=depth)).move
                     except Exception:
                         best_move = None
+                try:
+                    best_score = top_info.get("score").white() if top_info.get("score") is not None else None
+                except Exception:
+                    best_score = None
+                try:
+                    if len(infos) > 1 and infos[1].get("score") is not None:
+                        second_score = infos[1].get("score").white()
+                except Exception:
+                    second_score = None
+            else:
+                try:
+                    best_move = engine.play(board, chess.engine.Limit(depth=depth)).move
+                except Exception:
+                    best_move = None
 
                 try:
                     san_best = board.san(best_move) if best_move else "-"
                 except Exception:
                     san_best = "-"
 
-                # analyze before
-                info_before = engine.analyse(board, chess.engine.Limit(depth=depth))
-                score_before = info_before.get("score")
-                if score_before is not None:
-                    score_before = score_before.white()
+            try:
+                san_best = board.san(best_move) if best_move else "-"
+            except Exception:
+                san_best = "-"
 
-                # push move
-                board.push(move)
-                material_after = material_count(board)
+            # analyze before
+            info_before = engine.analyse(board, chess.engine.Limit(depth=depth))
+            score_before = info_before.get("score")
+            if score_before is not None:
+                score_before = score_before.white()
 
-                # analyze after
-                info_after = engine.analyse(board, chess.engine.Limit(depth=depth))
-                score_after = info_after.get("score")
-                if score_after is not None:
-                    score_after = score_after.white()
+            # push move
+            board.push(move)
+            material_after = material_count(board)
 
-                # eval graph
-                eval_bar = eval_to_bar(score_after)
-                eval_graph.append(eval_bar)
+            # analyze after
+            info_after = engine.analyse(board, chess.engine.Limit(depth=depth))
+            score_after = info_after.get("score")
+            if score_after is not None:
+                score_after = score_after.white()
 
-                # cp loss
+            # eval graph
+            eval_bar = eval_to_bar(score_after)
+            eval_graph.append(eval_bar)
+
+            # cp loss
+            cp_before = None
+            cp_after = None
+            try:
+                cp_before = score_before.score(mate_score=100000) if score_before is not None else None
+            except Exception:
                 cp_before = None
+            try:
+                cp_after = score_after.score(mate_score=100000) if score_after is not None else None
+            except Exception:
                 cp_after = None
-                try:
-                    cp_before = score_before.score(mate_score=100000) if score_before is not None else None
-                except Exception:
-                    cp_before = None
-                try:
-                    cp_after = score_after.score(mate_score=100000) if score_after is not None else None
-                except Exception:
-                    cp_after = None
 
-                if cp_before is not None and cp_after is not None:
-                    cp_loss_val = cp_before - cp_after
-                    if side == "B":
-                        cp_loss_val = -cp_loss_val
-                    cp_loss = abs(int(cp_loss_val))
-                else:
-                    cp_loss = 0
-                
-                cp_loss = min(cp_loss, CP_LOSS_CAP)
+            if cp_before is not None and cp_after is not None:
+                cp_loss_val = cp_before - cp_after
+                if side == "B":
+                    cp_loss_val = -cp_loss_val
+                cp_loss = abs(int(cp_loss_val))
+            else:
+                cp_loss = 0
+            
+            cp_loss = min(cp_loss, CP_LOSS_CAP)
 
-                label = classify_move(
-                    move,
-                    best_move,
-                    score_before,
-                    score_after,
-                    cp_loss,
-                    material_before,
-                    material_after,
-                    best_score=best_score,
-                    second_score=second_score,
-                    brilliant_cp_gap=BRILLIANT_CP_GAP,
-                )
+            label = classify_move(
+                move,
+                best_move,
+                score_before,
+                score_after,
+                cp_loss,
+                material_before,
+                material_after,
+                best_score=best_score,
+                second_score=second_score,
+                brilliant_cp_gap=BRILLIANT_CP_GAP,
+            )
 
-                if label != "Theory":
-                    move_accuracy = cp_loss_to_accuracy(cp_loss)
-                    if side == "W":
-                        white_accuracies.append(move_accuracy)
-                    else:
-                        black_accuracies.append(move_accuracy)
-
-            # Detect opening
+            # Detect opening via FEN (openings.json) - Runs for both Book and Engine moves
             current_fen_key = board.board_fen()
             if current_fen_key in _OPENINGS_DB:
                 current_opening = _OPENINGS_DB[current_fen_key]
+                label = "Theory"
+                cp_loss = 0
+
+            if label != "Theory":
+                move_accuracy = cp_loss_to_accuracy(cp_loss)
+                if side == "W":
+                    white_accuracies.append(move_accuracy)
+                else:
+                    black_accuracies.append(move_accuracy)
 
             # record move
             entry = {
@@ -840,7 +646,7 @@ def review_game_stream(
                 "side": side,
                 "played_san": san_played_raw,
                 "best_san": san_best,
-                "is_book_move": bool(is_book_move),
+                "is_book_move": False,
                 "cp_loss": cp_loss,
                 "label": label,
                 "coach_comment": get_coach_comment(label, san_played_raw, san_best, cp_loss, side),
@@ -865,8 +671,5 @@ def review_game_stream(
         yield json.dumps({"error": f"Error in analysis loop: {e}"}) + "\n"
     
     finally:
-        if book:
-            try: book.close()
-            except: pass
         try: engine.quit()
         except: pass

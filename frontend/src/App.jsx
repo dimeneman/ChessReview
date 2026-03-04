@@ -151,6 +151,8 @@ export default function App() {
     } catch { return false; }
 
     try {
+      // Capture FEN BEFORE making the move, for deviation analysis
+      const fenBefore = chess.fen();
       const result = chess.move(move);
       if (result) {
         const newFen = chess.fen();
@@ -176,49 +178,116 @@ export default function App() {
         }
 
         if (!onMainLine) {
-          // Deviation Logic
-          let label = "Analysis";
-          let bestSan = "-";
+          // Set a temporary state immediately so the UI shows something
+          setDeviationData({
+            played_san: result.san,
+            label: "Analyzing...",
+            best_san: "-",
+            cp_loss: 0,
+          });
 
-          // If there is game data for this node, check if we found the best move
-          // We check the *previous* move's suggestions (the move we just played answers the previous position)
-          if (data && data.moves && moveIndex < data.moves.length) {
-            const gameMoveAtThisIndex = data.moves[moveIndex];
-            // The "best move" suggestion for this position is stored on the node itself 
-            // (assuming data.moves[i] contains the best move *for that turn*)
-            if (gameMoveAtThisIndex.best_san === result.san) {
-              label = "Best";
-              bestSan = result.san;
+          // Analyze the position BEFORE the move (to classify it) — sequential to avoid Stockfish process contention
+          const analysisBefore = await analyzePosition(fenBefore);
+          console.log("[DeviationAnalysis] result.san:", result.san, "| analysisBefore:", analysisBefore);
+
+          let label = "Unknown";
+          let bestSan = "-";
+          let cp_loss = 0;
+          let evalBefore = 0;
+
+          // Helper: strip check/mate symbols for comparison (chess.js vs python-chess may differ rarely)
+          const normSan = (s) => (s || "").replace(/[+#]/g, "").trim();
+
+          if (analysisBefore && !analysisBefore.error) {
+            bestSan = analysisBefore.best_san || "-";
+            evalBefore = analysisBefore.evaluation ?? 0;
+
+            // Show best move arrow (only if the player didn't play the best move)
+            if (analysisBefore.best_move && normSan(result.san) !== normSan(analysisBefore.best_san)) {
+              const from = analysisBefore.best_move.substring(0, 2);
+              const to = analysisBefore.best_move.substring(2, 4);
+              setArrows([[from, to, "green"]]);
             } else {
-              bestSan = gameMoveAtThisIndex.best_san;
+              setArrows([]);
             }
+
+            // Forced move: only 1 legal option
+            if (analysisBefore.is_forced) {
+              label = "Forced";
+            } else if (normSan(result.san) === normSan(analysisBefore.best_san)) {
+              label = "Best";
+            }
+            // If not best/forced, we'll compute cp_loss after getting analysisAfter below
+          } else {
+            console.warn("[DeviationAnalysis] analysisBefore failed:", analysisBefore);
+            // Fallback: use game data if within game sequence
+            if (data && data.moves && moveIndex < data.moves.length) {
+              const gameMoveAtIndex = data.moves[moveIndex];
+              if (gameMoveAtIndex) {
+                bestSan = gameMoveAtIndex.best_san || "-";
+                cp_loss = gameMoveAtIndex.cp_loss || 0;
+                if (normSan(gameMoveAtIndex.best_san) === normSan(result.san)) label = "Best";
+                else if (cp_loss <= 20) label = "Excellent";
+                else if (cp_loss <= 50) label = "Good";
+                else if (cp_loss <= 100) label = "Inaccuracy";
+                else if (cp_loss <= 300) label = "Mistake";
+                else label = "Blunder";
+              }
+            }
+          }
+
+          // Analyze position AFTER the move for eval bar + cp_loss computation
+          const analysisAfter = await analyzePosition(newFen);
+          console.log("[DeviationAnalysis] analysisAfter:", analysisAfter);
+
+          if (analysisAfter && !analysisAfter.error && analysisAfter.evaluation !== undefined) {
+            const evalAfter = analysisAfter.evaluation;
+
+            // Compute cp_loss only if label is still unresolved
+            if (label === "Unknown" || (analysisBefore && !analysisBefore.error && label !== "Best" && label !== "Forced")) {
+              const side = result.color; // 'w' or 'b'
+              let cpLossRaw;
+              if (side === 'w') {
+                cpLossRaw = evalBefore - evalAfter;
+              } else {
+                cpLossRaw = evalAfter - evalBefore;
+              }
+              cp_loss = Math.max(0, Math.round(cpLossRaw * 100));
+              console.log("[DeviationAnalysis] evalBefore:", evalBefore, "evalAfter:", evalAfter, "cp_loss:", cp_loss, "side:", side);
+
+              if (label !== "Best" && label !== "Forced") {
+                if (cp_loss <= 20) label = "Excellent";
+                else if (cp_loss <= 50) label = "Good";
+                else if (cp_loss <= 100) label = "Inaccuracy";
+                else if (cp_loss <= 300) label = "Mistake";
+                else label = "Blunder";
+              }
+            }
+
+            // Update eval bar from position AFTER the move (clamp ±100 → ±1)
+            const normalizedEval = Math.max(-1, Math.min(1, evalAfter / 100.0));
+            setLiveEval(normalizedEval);
+          } else if (analysisBefore && !analysisBefore.error) {
+            // Terminal position (checkmate etc.) — use before eval as fallback
+            const normalizedEval = Math.max(-1, Math.min(1, evalBefore / 100.0));
+            setLiveEval(normalizedEval);
           }
 
           setDeviationData({
             played_san: result.san,
-            label: label,
+            label,
             best_san: bestSan,
+            cp_loss,
           });
 
-          setCustomMoveLabel(null); // Clear it so we don't override visuals randomly
-
-          // Live Analysis
-          const analysis = await analyzePosition(newFen);
-          if (analysis && analysis.best_move) {
-            const from = analysis.best_move.substring(0, 2);
-            const to = analysis.best_move.substring(2, 4);
-            setArrows([[from, to, "green"]]);
-          }
-          if (analysis && analysis.evaluation !== undefined) {
-            const normalizedEval = Math.max(-1, Math.min(1, analysis.evaluation / 10.0));
-            setLiveEval(normalizedEval);
-          }
+          setCustomMoveLabel(null);
         }
 
         playMoveSound(result, chess);
         return true;
       }
     } catch (e) {
+      console.error("makeMove error:", e);
       return false;
     }
     return false;

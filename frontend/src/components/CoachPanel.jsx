@@ -22,16 +22,42 @@ export default function CoachPanel({ move, onNext, onPlayBestMove, theme }) {
 
     const style = getClassificationStyle(move.label);
 
-    // Construct text logic can remain or move to util. keeping simple here
-    let feedbackText = `${move.played_san} is played`;
+    // Show loading state when analysis is in progress
+    if (move.label === "Analyzing...") {
+        return (
+            <div className="bg-[#21201d] rounded shadow-lg overflow-hidden">
+                <div className="p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-8 h-8 flex items-center justify-center">
+                            <div className="w-6 h-6 border-2 border-gray-400 border-t-white rounded-full animate-spin" />
+                        </div>
+                        <h2 className="text-lg font-bold leading-tight text-gray-300">
+                            Analyzing {move.played_san}...
+                        </h2>
+                    </div>
+                    <div className="ml-11 text-sm text-gray-500">Calculating best move and evaluation</div>
+                </div>
+                <div className="bg-[#262421] px-4 py-3 border-t border-[#3c3a37]">
+                    <button onClick={onNext} style={{ backgroundColor: btnColor }} className="w-full text-white font-bold py-2 px-4 rounded transition-colors shadow flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98]">
+                        Next Move ➡️
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // Construct text logic
+    let feedbackText = `${move.played_san} was played`;
     if (style && style.label) {
         if (["Brilliant", "Great", "Best", "Excellent", "Good"].includes(style.label)) {
             feedbackText = `${move.played_san} is ${style.label.toLowerCase()}!`;
             if (style.label === "Best") feedbackText = `${move.played_san} is the best move!`;
         } else if (["Inaccuracy", "Mistake", "Blunder"].includes(style.label)) {
             feedbackText = `${move.played_san} is a ${style.label.toLowerCase()}`;
+        } else if (["Theory", "Book"].includes(style.label)) {
+            feedbackText = `${move.played_san} is a book move`;
         } else {
-            feedbackText = `${move.played_san} is ${style.label.toLowerCase()}`;
+            feedbackText = `${move.played_san} was played`;
         }
     }
 

@@ -1,15 +1,6 @@
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-backend/venv/
-backend/env/
-
-# Python
+# ──────────────────────────────────────────────
+# Python / Virtual Environments
+# ──────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
@@ -33,33 +24,85 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Node dependencies
+# Virtual environments (root and nested)
+env/
+.env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+backend/venv/
+backend/env/
+
+# ──────────────────────────────────────────────
+# Environment variables / secrets
+# ──────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ──────────────────────────────────────────────
+# Node / Frontend
+# ──────────────────────────────────────────────
 node_modules/
 frontend/node_modules/
-logs
+
+# Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pids
+pnpm-debug.log*
+lerna-debug.log*
+
+# Pids
+pids/
 *.pid
 *.seed
 *.pid.lock
 
-# Frontend build
+# Frontend build output
 frontend/dist/
 frontend/build/
+dist/
+build/
 .next/
 out/
 
+# ──────────────────────────────────────────────
 # IDE / OS
+# ──────────────────────────────────────────────
 .DS_Store
+Thumbs.db
 .idea/
 .vscode/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
-# Project specific binaries and data
+# ──────────────────────────────────────────────
+# Project-specific binaries & runtime data
+# ──────────────────────────────────────────────
+# Stockfish engine binary (download separately)
 backend/engine/stockfish
 backend/engine/stockfish.exe
+
+# PGN game files (user-uploaded, not source code)
 *.pgn
+
+# Backend generated files
+backend/games/
+backend/backend.log
+backend/__pycache__/
+
+# Opening books (binary/large data files)
+backend/opening_books/*.bin
+backend/opening_books/*.dat
+backend/opening_books/*.polyglot
+node_modules
+node_modules
+node_modules
+node_modules
