@@ -1,0 +1,54 @@
+# ==============================================================================
+# ChessReview - Pre-commit Git Hook Configuration
+# ==============================================================================
+# Installs git pre-commit hooks to ensure code quality before commits:
+#   pip install pre-commit
+#   pre-commit install
+#   pre-commit run --all-files
+# ==============================================================================
+
+repos:
+  # ----------------------------------------------------------------------------
+  # Generic File Integrity Checks
+  # ----------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.min\.js$|\.min\.css$'
+      - id: end-of-file-fixer
+        exclude: '\.min\.js$|\.min\.css$'
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+
+  # ----------------------------------------------------------------------------
+  # Python Linting with Ruff
+  # ----------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.5
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  # ----------------------------------------------------------------------------
+  # Black Python Formatter
+  # ----------------------------------------------------------------------------
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        language_version: python3.12
+
+  # ----------------------------------------------------------------------------
+  # isort Import Sorting
+  # ----------------------------------------------------------------------------
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+

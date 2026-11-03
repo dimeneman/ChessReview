@@ -1,0 +1,71 @@
+# ==============================================================================
+# ChessReview - Docker Compose Orchestration
+# ==============================================================================
+# Usage:
+#   docker compose -f infra/docker-compose.yml up -d
+#   docker compose -f infra/docker-compose.yml down
+# ==============================================================================
+
+services:
+  # ----------------------------------------------------------------------------
+  # Backend Service (FastAPI + Stockfish Engine)
+  # ----------------------------------------------------------------------------
+  backend:
+    build:
+      context: ..
+      dockerfile: backend/Dockerfile
+    container_name: chessreview-backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - HOST=${HOST:-0.0.0.0}
+      - PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - STOCKFISH_PATH=/usr/games/stockfish
+      - DEFAULT_DEPTH=${DEFAULT_DEPTH:-18}
+      - DEFAULT_MULTIPV=${DEFAULT_MULTIPV:-3}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - chessreview-network
+
+  # ----------------------------------------------------------------------------
+  # Frontend Service (React + Vite + Nginx)
+  # ----------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ..
+      dockerfile: frontend/Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+    container_name: chessreview-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - chessreview-network
+
+# ------------------------------------------------------------------------------
+# Isolated Bridge Network
+# ------------------------------------------------------------------------------
+networks:
+  chessreview-network:
+    driver: bridge
+    name: chessreview-network
+

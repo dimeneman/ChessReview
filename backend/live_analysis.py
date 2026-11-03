@@ -1,28 +1,40 @@
+"""
+Live position analysis module for ChessReview Backend.
+Evaluates individual chess board positions (FEN) using Stockfish.
+"""
+
+from typing import Any, Dict
+
 import chess
 import chess.engine
-import os
 
-ENGINE_PATH = os.environ.get("STOCKFISH_PATH", "engine/stockfish")
+from config import settings
+from logger import logger
 
-def analyze_position(fen: str, depth: int = 15):
+ENGINE_PATH: str = settings.STOCKFISH_PATH
+
+
+def analyze_position(fen: str, depth: int = 15) -> Dict[str, Any]:
     """
-    Analyzes a single position and returns eval, best move, and metadata.
+    Analyzes a single FEN chess position.
+    Returns the evaluation score, best move, best SAN, side to move,
+    and game-over or forced move status.
     """
-    board = chess.Board(fen)
+    try:
+        board = chess.Board(fen)
+    except Exception as exc:
+        logger.warning(f"Invalid FEN string provided '{fen}': {exc}")
+        return {"error": f"Invalid FEN: {exc}"}
 
     # Count legal moves to detect forced moves
-    legal_moves = list(board.legal_moves)
-    num_legal = len(legal_moves)
+    num_legal = len(list(board.legal_moves))
 
-    # Handle game-over positions (checkmate, stalemate)
+    # Handle game-over positions (checkmate, stalemate, insufficient material)
     if board.is_game_over():
-        outcome = board.outcome()
         if board.is_checkmate():
-            # The side that just MOVED (not the side to move) delivered checkmate
-            # board.turn is the side that is now in checkmate
             eval_val = -100.0 if board.turn == chess.WHITE else 100.0
         else:
-            eval_val = 0.0  # stalemate / draw
+            eval_val = 0.0  # Stalemate / Draw
         return {
             "best_move": None,
             "best_san": "-",
@@ -36,8 +48,9 @@ def analyze_position(fen: str, depth: int = 15):
 
     try:
         engine = chess.engine.SimpleEngine.popen_uci(ENGINE_PATH)
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception as exc:
+        logger.error(f"Could not launch Stockfish engine at '{ENGINE_PATH}': {exc}")
+        return {"error": f"Could not launch Stockfish engine: {exc}"}
 
     try:
         info = engine.analyse(board, chess.engine.Limit(depth=depth))
@@ -47,10 +60,10 @@ def analyze_position(fen: str, depth: int = 15):
         pov_score = info.get("score")
         eval_val = 0.0
         if pov_score:
-            # Get Score from White's perspective
             white_score = pov_score.white()
             if white_score.is_mate():
-                eval_val = 100.0 if white_score.mate() > 0 else -100.0
+                mate_val = white_score.mate()
+                eval_val = 100.0 if (mate_val is not None and mate_val > 0) else -100.0
             else:
                 cp = white_score.score(mate_score=10000)
                 eval_val = (cp or 0) / 100.0
@@ -63,8 +76,11 @@ def analyze_position(fen: str, depth: int = 15):
             "is_forced": is_forced,
             "is_game_over": False,
         }
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception as exc:
+        logger.error(f"Error during position evaluation: {exc}")
+        return {"error": str(exc)}
     finally:
-        engine.quit()
-
+        try:
+            engine.quit()
+        except Exception:
+            pass

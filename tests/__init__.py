@@ -1,0 +1,4 @@
+"""
+ChessReview Automated Test Suite.
+"""
+

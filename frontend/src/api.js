@@ -1,5 +1,17 @@
-const API_URL = "https://chessreview-production.up.railway.app";
+/**
+ * ChessReview Frontend API Client.
+ * Connects to the FastAPI backend for game reviews, position evaluations, and Chess.com archives.
+ * Supports environment variable configuration via VITE_API_URL with production fallback.
+ */
 
+const API_URL = import.meta.env.VITE_API_URL || "https://chessreview-production.up.railway.app";
+
+/**
+ * Submits a raw PGN string for full game evaluation.
+ * @param {string} pgn - Portable Game Notation text.
+ * @param {number} depth - Engine search depth (5-25).
+ * @returns {Promise<object|null>} Analysis results or null on error.
+ */
 export async function reviewGame(pgn, depth = 18) {
   try {
     const response = await fetch(`${API_URL}/review-raw?depth=${depth}`, {
@@ -16,6 +28,13 @@ export async function reviewGame(pgn, depth = 18) {
   }
 }
 
+/**
+ * Submits a PGN string and streams real-time progress events using NDJSON.
+ * @param {string} pgn - PGN text string.
+ * @param {Function} onProgress - Callback invoked on progress events.
+ * @param {number} depth - Engine search depth.
+ * @returns {Promise<object>} Complete analysis payload or error object.
+ */
 export async function reviewGameStream(pgn, onProgress, depth = 18) {
   try {
     const response = await fetch(`${API_URL}/review-stream?depth=${depth}`, {
@@ -54,7 +73,7 @@ export async function reviewGameStream(pgn, onProgress, depth = 18) {
 
           onProgress(event);
 
-          if (event.type === 'complete') {
+          if (event.type === "complete") {
             return event.data;
           }
         } catch (e) {
@@ -68,6 +87,11 @@ export async function reviewGameStream(pgn, onProgress, depth = 18) {
   }
 }
 
+/**
+ * Evaluates a single FEN chess board position.
+ * @param {string} fen - Forsyth-Edwards Notation string.
+ * @returns {Promise<object|null>} Position evaluation or null on error.
+ */
 export async function analyzePosition(fen) {
   try {
     const response = await fetch(`${API_URL}/analyze`, {
@@ -84,6 +108,13 @@ export async function analyzePosition(fen) {
   }
 }
 
+/**
+ * Fetches player games for a specific year and month from Chess.com public archives.
+ * @param {string} username - Player username.
+ * @param {number} year - Four-digit year.
+ * @param {number} month - Month (1-12).
+ * @returns {Promise<object|null>} Archive games or null on error.
+ */
 export async function fetchGames(username, year, month) {
   try {
     const response = await fetch(`${API_URL}/fetch-games`, {

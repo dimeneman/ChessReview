@@ -1,0 +1,74 @@
+# ==============================================================================
+# ChessReview - Python Tooling Configuration (pyproject.toml)
+# ==============================================================================
+
+[build-system]
+requires = ["setuptools>=65.0"]
+build-backend = "setuptools.build_meta"
+
+# ------------------------------------------------------------------------------
+# Black Formatter Configuration
+# ------------------------------------------------------------------------------
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # Directories to exclude
+  \.git
+  | \.venv
+  | env
+  | venv
+  | build
+  | dist
+  | node_modules
+)/
+'''
+
+# ------------------------------------------------------------------------------
+# Ruff Linter & Formatter Configuration
+# ------------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort imports
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+]
+ignore = [
+    "E501",  # line length handled by black
+    "B008",  # do not perform function calls in argument defaults (needed for FastAPI Depends/Body)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["config", "logger", "review_engine", "live_analysis"]
+
+# ------------------------------------------------------------------------------
+# isort Configuration (Standalone compatibility)
+# ------------------------------------------------------------------------------
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["config", "logger", "review_engine", "live_analysis"]
+multi_line_output = 3
+
+# ------------------------------------------------------------------------------
+# Pytest Configuration
+# ------------------------------------------------------------------------------
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --tb=short"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+asyncio_mode = "auto"
+

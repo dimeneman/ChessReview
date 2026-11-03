@@ -1,11 +1,45 @@
-# ──────────────────────────────────────────────
-# Python / Virtual Environments
-# ──────────────────────────────────────────────
+# ==============================================================================
+# ChessReview - Master .gitignore
+# ==============================================================================
+# Comprehensive gitignore for Python FastAPI backend, React/Vite frontend,
+# Docker infrastructure, and Stockfish chess engine runtime artifacts.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Environment Variables & Secrets (CRITICAL SECURITY)
+# ------------------------------------------------------------------------------
+*.env
+*.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.cert
+*.crt
+secrets.json
+
+# ------------------------------------------------------------------------------
+# 2. Python & Virtual Environments
+# ------------------------------------------------------------------------------
+# Bytecode and compiled files
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+ENV/
+env.bak/
+venv.bak/
+backend/venv/
+backend/env/
+
+# Packaging, distribution, and build
 build/
 develop-eggs/
 dist/
@@ -24,46 +58,16 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual environments (root and nested)
-env/
-.env/
-venv/
-.venv/
-ENV/
-env.bak/
-venv.bak/
-backend/venv/
-backend/env/
-
-# ──────────────────────────────────────────────
-# Environment variables / secrets
-# ──────────────────────────────────────────────
-.env
-.env.local
-.env.*.local
-
-# ──────────────────────────────────────────────
-# Node / Frontend
-# ──────────────────────────────────────────────
+# ------------------------------------------------------------------------------
+# 3. Node.js & Frontend (React / Vite / Tailwind)
+# ------------------------------------------------------------------------------
+# Dependencies
 node_modules/
-frontend/node_modules/
+*/node_modules/
+.pnp
+.pnp.js
 
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-# Pids
-pids/
-*.pid
-*.seed
-*.pid.lock
-
-# Frontend build output
+# Build outputs
 frontend/dist/
 frontend/build/
 dist/
@@ -71,38 +75,95 @@ build/
 .next/
 out/
 
-# ──────────────────────────────────────────────
-# IDE / OS
-# ──────────────────────────────────────────────
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ------------------------------------------------------------------------------
+# 4. Chess Engine Binaries & Runtime Files
+# ------------------------------------------------------------------------------
+# Stockfish executable binaries (downloaded via setup script / installed via Docker)
+backend/engine/stockfish
+backend/engine/stockfish.exe
+backend/engine/stockfish*
+!backend/engine/.gitkeep
+!backend/engine/README.md
+
+# Opening book binary formats (if downloaded separately)
+backend/opening_books/*.bin
+backend/opening_books/*.dat
+backend/opening_books/*.polyglot
+
+# Runtime user games (preserve sample.pgn)
+backend/games/*.pgn
+!backend/games/sample.pgn
+
+# ------------------------------------------------------------------------------
+# 5. Testing, Linting & Code Quality Caches
+# ------------------------------------------------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ------------------------------------------------------------------------------
+# 6. Operating System & Editor Artifacts
+# ------------------------------------------------------------------------------
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
 Thumbs.db
+Thumbs.db:encrypt
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+
+# Editors and IDEs
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 *.sublime-project
 *.sublime-workspace
 
-# ──────────────────────────────────────────────
-# Project-specific binaries & runtime data
-# ──────────────────────────────────────────────
-# Stockfish engine binary (download separately)
-backend/engine/stockfish
-backend/engine/stockfish.exe
-
-# PGN game files (user-uploaded, not source code)
-*.pgn
-
-# Backend generated files
-backend/games/
+# ------------------------------------------------------------------------------
+# 7. Runtime Logs & Process IDs
+# ------------------------------------------------------------------------------
+logs/
+*.log
 backend/backend.log
-backend/__pycache__/
+pids/
+*.pid
+*.seed
+*.pid.lock
 
-# Opening books (binary/large data files)
-backend/opening_books/*.bin
-backend/opening_books/*.dat
-backend/opening_books/*.polyglot
-node_modules
-node_modules
-node_modules
-node_modules
+# ------------------------------------------------------------------------------
+# 8. Docker & Infrastructure
+# ------------------------------------------------------------------------------
+docker-compose.override.yml
+.dockerignore
+env
