@@ -33,31 +33,6 @@
 Designed with enterprise software engineering standards, ChessReview features multi-stage Docker containerization, comprehensive health checks, structured logging, a complete automated test suite, pre-commit quality hooks, and GitHub Actions CI/CD pipelines.
 
 ---
-
-## 📸 Visuals & Demos
-
-<div align="center">
-
-### Interactive Game Review Dashboard
-<!-- Replace with actual demo screenshot or GIF -->
-```
-+-----------------------------------------------------------------------------------+
-|  [ W: 94.2% Accuracy ]      Move 18: 18... Be6 (Brilliant !!)   [ B: 88.5% Acc ]  |
-|  +-----------------------+  +--------------------------------------------------+  |
-|  | [r] [ ] [b] [q] [k]   |  | Coach: "You found the only winning sacrifice!"   |  |
-|  | [p] [p] [ ] [ ] [p]   |  | Centipawn Loss: 0 | MultiPV Advantage: +350 cp   |  |
-|  | [ ] [ ] [n] [ ] [ ]   |  +--------------------------------------------------+  |
-|  | [ ] [ ] [ ] [P] [ ]   |  [=== Evaluation Graph ==============================]  |
-|  | [ ] [B] [ ] [ ] [ ]   |   +1.0 |                   /\                           |
-|  | [P] [P] [P] [ ] [P]   |    0.0 |---------/--------/--\---------/--------------  |
-|  | [R] [N] [B] [Q] [K]   |   -1.0 |________/________/____\_______/_______________  |
-|  +-----------------------+   Ply:   1   5   10   15   20   25   30   35   40       |
-+-----------------------------------------------------------------------------------+
-```
-*(Place demo GIF or UI screenshots in `assets/demo.gif` and link here)*
-
-</div>
-
 ---
 
 ## ✨ Features
